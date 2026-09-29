@@ -49,21 +49,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenPreOrder }) => {
           : 'bg-transparent py-3 sm:py-4'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Header Brand Logo */}
         <a
           href="#top"
-          className="flex items-center gap-2.5 group focus-visible:outline-none"
+          className="flex items-center gap-1.5 sm:gap-2.5 group focus-visible:outline-none"
         >
-          <TeladuLogo size={26} />
+          <TeladuLogo size={24} className="sm:scale-105 origin-left" />
           <span className="hidden sm:inline-block w-px h-3.5 bg-white/20" />
           <span className="text-[11px] font-mono font-semibold text-cyan-400 uppercase tracking-widest hidden sm:inline-block">
             V1 · Cloud ePhone
           </span>
         </a>
 
-        {/* Social Media Links (Replaced Heading Texts) */}
-        <div className="flex items-center gap-3 sm:gap-4">
+        {/* Social Media Links: Compact and close to each other on mobile */}
+        <div className="flex items-center gap-1.5 sm:gap-3.5">
           {socialLinks.map((item) => {
             const Icon = item.icon;
             return (
@@ -73,23 +73,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenPreOrder }) => {
                 target="_blank"
                 rel="noopener noreferrer"
                 title={item.name}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-slate-300 hover:text-white flex items-center justify-center transition-all shadow-[0_0_10px_rgba(0,71,255,0.2)] hover:shadow-[0_0_15px_rgba(0,180,255,0.5)] cursor-pointer"
+                className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-slate-300 hover:text-white flex items-center justify-center transition-all shadow-[0_0_8px_rgba(0,71,255,0.2)] hover:shadow-[0_0_15px_rgba(0,180,255,0.5)] cursor-pointer"
                 aria-label={item.name}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
               </a>
             );
           })}
         </div>
 
         {/* Clear Glassy, Smaller Action Button */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           <button
             onClick={onOpenPreOrder}
-            className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/25 backdrop-blur-xl border border-white/25 hover:border-cyan-400/60 text-white font-bold text-[11px] tracking-wide shadow-[0_0_15px_rgba(0,71,255,0.35)] transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+            className="px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/25 backdrop-blur-xl border border-white/25 hover:border-cyan-400/60 text-white font-bold text-[10px] sm:text-[11px] tracking-wide shadow-[0_0_12px_rgba(0,71,255,0.35)] transition-all flex items-center gap-1 sm:gap-1.5 whitespace-nowrap cursor-pointer"
           >
             <span>Early Bird $29</span>
-            <ArrowUpRight className="w-3 h-3 text-cyan-300" />
+            <ArrowUpRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-cyan-300" />
           </button>
         </div>
       </div>

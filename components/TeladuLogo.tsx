@@ -13,6 +13,10 @@ interface TeladuLogoProps {
  * and the lowercase rounded 'teladu' wordmark.
  */
 export const TeladuIcon: React.FC<{ size?: number; className?: string }> = ({ size = 32, className = '' }) => {
+  const reactId = React.useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const blueGradId = `teladu-blue-${reactId}`;
+  const sheenGradId = `teladu-sheen-${reactId}`;
+
   return (
     <svg
       width={size}
@@ -21,39 +25,46 @@ export const TeladuIcon: React.FC<{ size?: number; className?: string }> = ({ si
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      style={{ filter: 'drop-shadow(0 4px 12px rgba(0, 56, 255, 0.4))' }}
     >
       <defs>
         {/* Rich Electric Blue Gradient with glassy top highlight */}
-        <linearGradient id="teladuBlueGrad" x1="20" y1="20" x2="180" y2="180" gradientUnits="userSpaceOnUse">
+        <linearGradient id={blueGradId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#1e5aff" />
           <stop offset="50%" stopColor="#0038ff" />
           <stop offset="100%" stopColor="#0025c8" />
         </linearGradient>
-        <linearGradient id="glassSheen" x1="20" y1="20" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+        <linearGradient id={sheenGradId} x1="0%" y1="0%" x2="70%" y2="70%">
           <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
           <stop offset="60%" stopColor="#ffffff" stopOpacity="0.05" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
-        <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="#0038ff" floodOpacity="0.35" />
-        </filter>
       </defs>
 
-      {/* Rounded Blue Tile */}
+      {/* Base Solid Electric Blue Tile (Guarantees blue color under all browser conditions) */}
       <rect
         x="10"
         y="10"
         width="180"
         height="180"
         rx="46"
-        fill="url(#teladuBlueGrad)"
-        filter="url(#softGlow)"
+        fill="#0038ff"
+      />
+
+      {/* Rounded Blue Tile with Gradient */}
+      <rect
+        x="10"
+        y="10"
+        width="180"
+        height="180"
+        rx="46"
+        fill={`url(#${blueGradId})`}
       />
 
       {/* Glass Top Highlight Arc */}
       <path
         d="M 10 56 Q 10 10 56 10 L 144 10 Q 170 10 178 28 C 130 38 70 80 50 140 Q 10 120 10 56 Z"
-        fill="url(#glassSheen)"
+        fill={`url(#${sheenGradId})`}
       />
 
       {/* White Smiling Waving Hand */}

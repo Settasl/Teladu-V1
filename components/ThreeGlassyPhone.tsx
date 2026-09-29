@@ -45,7 +45,8 @@ export const ThreeGlassyPhone: React.FC<ThreeGlassyPhoneProps> = ({
       renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true,
-        powerPreference: 'high-performance',
+        powerPreference: 'default',
+        failIfMajorPerformanceCaveat: false,
       });
     } catch (e) {
       console.warn('WebGL init error:', e);
@@ -53,7 +54,7 @@ export const ThreeGlassyPhone: React.FC<ThreeGlassyPhoneProps> = ({
     }
 
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.35;
 

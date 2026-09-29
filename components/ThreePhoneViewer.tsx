@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { COLORWAYS, ColorwayOption } from '../assets';
 import { RotateCw, Eye, Sparkles, Layers, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { drawRoundRectPath } from '../services/canvasUtils';
 
 interface ThreePhoneViewerProps {
   initialColor?: string;
@@ -98,7 +99,7 @@ export const ThreePhoneViewer: React.FC<ThreePhoneViewerProps> = ({
       // Status icons representation
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.roundRect(880, 85, 60, 30, 8);
+      drawRoundRectPath(ctx, 880, 85, 60, 30, 8);
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 4;
       ctx.stroke();
@@ -116,7 +117,7 @@ export const ThreePhoneViewer: React.FC<ThreePhoneViewerProps> = ({
 
       // Spatial Floating Widget Card
       ctx.beginPath();
-      ctx.roundRect(100, 720, 824, 260, 48);
+      drawRoundRectPath(ctx, 100, 720, 824, 260, 48);
       ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
       ctx.fill();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
@@ -141,7 +142,7 @@ export const ThreePhoneViewer: React.FC<ThreePhoneViewerProps> = ({
       for (let idx = 0; idx < 4; idx++) {
         const x = 180 + idx * 180;
         ctx.beginPath();
-        ctx.roundRect(x - 55, dockY - 55, 110, 110, 30);
+        drawRoundRectPath(ctx, x - 55, dockY - 55, 110, 110, 30);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
         ctx.fill();
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
@@ -151,7 +152,7 @@ export const ThreePhoneViewer: React.FC<ThreePhoneViewerProps> = ({
 
       // Home Bar Indicator
       ctx.beginPath();
-      ctx.roundRect(362, 1980, 300, 10, 5);
+      drawRoundRectPath(ctx, 362, 1980, 300, 10, 5);
       ctx.fillStyle = '#ffffff';
       ctx.fill();
     } else if (mode === 'vision') {
@@ -194,7 +195,7 @@ export const ThreePhoneViewer: React.FC<ThreePhoneViewerProps> = ({
       ctx.fillText('Teladu ePhone Pro · Aerospace Titanium', 512, 950);
 
       ctx.beginPath();
-      ctx.roundRect(362, 1980, 300, 10, 5);
+      drawRoundRectPath(ctx, 362, 1980, 300, 10, 5);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.fill();
     }

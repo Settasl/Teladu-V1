@@ -46,58 +46,58 @@ const FEATURE_CATEGORIES: FeatureCategory[] = [
 
 export const EPhoneFeaturesSection: React.FC<{ onOpenPreOrder: () => void }> = ({ onOpenPreOrder }) => {
   return (
-    <section id="features" className="relative py-16 sm:py-24 bg-[#030611] border-t border-blue-500/20 overflow-hidden">
+    <section id="features" className="relative py-12 sm:py-20 md:py-24 bg-[#030611] border-t border-blue-500/20 overflow-hidden">
       {/* Subtle Glow */}
       <div className="absolute top-1/3 right-1/4 w-[600px] h-[350px] bg-blue-600/10 blur-[160px] pointer-events-none rounded-full" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10">
         
         {/* Section Heading */}
-        <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-          <div className="text-[11px] font-mono font-semibold uppercase tracking-widest text-cyan-400 mb-2">
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-14">
+          <div className="text-[10px] sm:text-[11px] font-mono font-semibold uppercase tracking-widest text-cyan-400 mb-1.5 sm:mb-2">
             Complete Virtual Phone Architecture
           </div>
-          <h2 className="font-display text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+          <h2 className="font-display text-xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
             Built for Desktop. Powered by Android.
           </h2>
-          <p className="mt-2.5 sm:mt-3 text-xs sm:text-sm text-slate-300 font-light leading-relaxed">
+          <p className="mt-2 text-[11px] sm:text-sm text-slate-300 font-light leading-relaxed max-w-xl mx-auto">
             From the initial power-on sequence to dialer calls, camera captures, and virtual eSIM connectivity,
             experience the full feature set of a flagship smartphone on your computer.
           </p>
         </div>
 
         {/* Feature Grids: PURE TEXTS & ICONS - Zero Boxes, Zero Borders */}
-        <div className="space-y-12 sm:space-y-16">
+        <div className="space-y-8 sm:space-y-14">
           {FEATURE_CATEGORIES.map((cat) => (
-            <div key={cat.title} className="space-y-6 sm:space-y-8">
-              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] sm:text-xs font-mono font-bold text-cyan-300">
+            <div key={cat.title} className="space-y-5 sm:space-y-8">
+              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 sm:gap-2">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-[9px] sm:text-xs font-mono font-bold text-cyan-300">
                     {cat.badge}
                   </span>
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                  <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{cat.title}</h3>
+                  <h3 className="text-base sm:text-xl md:text-2xl font-bold text-white tracking-tight">{cat.title}</h3>
                 </div>
-                <p className="text-xs text-slate-400 max-w-md">{cat.description}</p>
+                <p className="text-[10px] sm:text-xs text-slate-400 max-w-md">{cat.description}</p>
               </div>
 
               {/* Just the icons and texts without boxes/borders */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8 pt-1">
                 {cat.items.map((item) => {
                   const Icon = item.icon;
                   return (
                     <div
                       key={item.name}
-                      className="flex items-start gap-3.5 group"
+                      className="flex items-start gap-2.5 sm:gap-3.5 group"
                     >
                       <div className="text-cyan-400 pt-0.5 shrink-0 group-hover:scale-110 group-hover:text-cyan-300 transition-all drop-shadow-[0_0_8px_rgba(0,210,255,0.4)]">
-                        <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                        <Icon className="w-4 h-4 sm:w-6 sm:h-6" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-white tracking-tight group-hover:text-cyan-200 transition-colors">
+                        <h4 className="text-xs sm:text-sm font-bold text-white tracking-tight group-hover:text-cyan-200 transition-colors">
                           {item.name}
                         </h4>
-                        <p className="text-xs text-slate-400 mt-1 leading-relaxed font-light">
+                        <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 sm:mt-1 leading-relaxed font-light">
                           {item.detail}
                         </p>
                       </div>
@@ -110,17 +110,17 @@ export const EPhoneFeaturesSection: React.FC<{ onOpenPreOrder: () => void }> = (
         </div>
 
         {/* Bottom Banner with Clear Glassy, Smaller Button */}
-        <div className="mt-14 sm:mt-16 p-6 sm:p-8 rounded-3xl bg-slate-950/70 backdrop-blur-2xl border border-blue-500/30 shadow-[0_0_35px_rgba(0,71,255,0.2)] flex flex-col md:flex-row items-center justify-between gap-5">
+        <div className="mt-10 sm:mt-16 p-4 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-950/70 backdrop-blur-2xl border border-blue-500/30 shadow-[0_0_35px_rgba(0,71,255,0.2)] flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-5">
           <div className="text-center md:text-left">
-            <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">Ready to activate your Cloud ePhone?</h3>
-            <p className="text-xs text-slate-300 mt-1">
+            <h3 className="text-sm sm:text-lg md:text-xl font-bold text-white tracking-tight">Ready to activate your Cloud ePhone?</h3>
+            <p className="text-[10px] sm:text-xs text-slate-300 mt-1">
               Early bird reservation includes lifetime account access, 128GB cloud storage, and global virtual eSIM.
             </p>
           </div>
 
           <button
             onClick={onOpenPreOrder}
-            className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/25 backdrop-blur-xl border border-white/25 hover:border-cyan-400/60 text-white font-bold text-xs shadow-[0_0_15px_rgba(0,71,255,0.35)] transition-all whitespace-nowrap cursor-pointer"
+            className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/25 backdrop-blur-xl border border-white/25 hover:border-cyan-400/60 text-white font-bold text-[11px] sm:text-xs shadow-[0_0_15px_rgba(0,71,255,0.35)] transition-all whitespace-nowrap cursor-pointer"
           >
             Reserve Teladu V1 · $29
           </button>

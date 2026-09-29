@@ -1,0 +1,23 @@
+{
+  "name": "Teladu V1 Cloud ePhone",
+  "short_name": "Teladu V1",
+  "description": "Meet the Teladu V1 Cloud ePhone. The first cloud ePhone with virtual eSIM and browser-native execution.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#03060f",
+  "theme_color": "#03060f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/teladu-icon.svg",
+      "sizes": "200x200",
+      "type": "image/svg+xml"
+    }
+  ]
+}

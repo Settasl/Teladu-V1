@@ -1,39 +1,31 @@
 /**
  * Cross-browser Canvas Utilities
  * Polyfills and safe helpers for CanvasRenderingContext2D methods like roundRect
- * Ensuring 100% compatibility with iOS Safari 12-16+, Android, and Desktop browsers.
+ * Ensuring 100% compatibility with iOS Safari 12-18, WebKit, Android, and Desktop browsers.
  */
 
-export const safeRoundRect = (
+// Native drawing helper - strictly uses standard arc/quadraticCurveTo with ZERO recursion risk
+export const drawRoundRectPath = (
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   w: number,
   h: number,
   radii: number | [number, number, number, number] = 0
-) => {
-  if (typeof ctx.roundRect === 'function') {
-    try {
-      ctx.roundRect(x, y, w, h, radii);
-      return;
-    } catch {
-      // Fallback below
-    }
-  }
-
-  // Cross-browser arc-based rounded rectangle fallback
+): void => {
   let rTopLeft = 0;
   let rTopRight = 0;
   let rBottomRight = 0;
   let rBottomLeft = 0;
 
   if (typeof radii === 'number') {
-    rTopLeft = rTopRight = rBottomRight = rBottomLeft = Math.min(radii, w / 2, h / 2);
+    const maxR = Math.min(Math.abs(w) / 2, Math.abs(h) / 2);
+    rTopLeft = rTopRight = rBottomRight = rBottomLeft = Math.max(0, Math.min(radii, maxR));
   } else if (Array.isArray(radii)) {
-    rTopLeft = radii[0] || 0;
-    rTopRight = radii[1] || 0;
-    rBottomRight = radii[2] || 0;
-    rBottomLeft = radii[3] || 0;
+    rTopLeft = Math.max(0, radii[0] || 0);
+    rTopRight = Math.max(0, radii[1] || 0);
+    rBottomRight = Math.max(0, radii[2] || 0);
+    rBottomLeft = Math.max(0, radii[3] || 0);
   }
 
   ctx.moveTo(x + rTopLeft, y);
@@ -47,19 +39,41 @@ export const safeRoundRect = (
   ctx.quadraticCurveTo(x, y, x + rTopLeft, y);
 };
 
-// Polyfill CanvasRenderingContext2D.prototype.roundRect if missing on older iOS / Safari
+export const safeRoundRect = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radii: number | [number, number, number, number] = 0
+): void => {
+  // Always safely use the arc/curve-based path to guarantee 100% identical cross-browser rendering
+  drawRoundRectPath(ctx, x, y, w, h, radii);
+};
+
+// Polyfill CanvasRenderingContext2D.prototype.roundRect if missing or broken on iOS / Safari
 if (typeof window !== 'undefined' && typeof CanvasRenderingContext2D !== 'undefined') {
-  if (!CanvasRenderingContext2D.prototype.roundRect) {
-    CanvasRenderingContext2D.prototype.roundRect = function (
-      this: CanvasRenderingContext2D,
-      x: number,
-      y: number,
-      w: number,
-      h: number,
-      radii?: number | DOMPointInit | (number | DOMPointInit)[]
-    ) {
-      const radius = typeof radii === 'number' ? radii : 0;
-      safeRoundRect(this, x, y, w, h, radius);
-    };
+  try {
+    const proto = CanvasRenderingContext2D.prototype;
+    if (!proto.roundRect) {
+      proto.roundRect = function (
+        this: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        radii?: number | DOMPointInit | (number | DOMPointInit)[]
+      ) {
+        let r = 0;
+        if (typeof radii === 'number') {
+          r = radii;
+        } else if (Array.isArray(radii) && typeof radii[0] === 'number') {
+          r = radii[0];
+        }
+        drawRoundRectPath(this, x, y, w, h, r);
+      };
+    }
+  } catch (e) {
+    console.warn('Canvas polyfill notice:', e);
   }
 }

@@ -38,7 +38,7 @@ const TILES: MacroTile[] = [
 
 export const PillarsSection: React.FC<{ onOpenPreOrder?: () => void }> = ({ onOpenPreOrder }) => {
   return (
-    <section id="pillars" className="relative py-20 bg-[#03050c] border-t border-blue-500/20 overflow-hidden">
+    <section id="pillars" className="relative py-12 sm:py-20 bg-[#03050c] border-t border-blue-500/20 overflow-hidden">
       {/* Background Ambience */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-blue-600/10 blur-[150px] pointer-events-none rounded-full" />
 
