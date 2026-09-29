@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { TeladuLogo } from './TeladuLogo';
-import { ArrowUpRight, Menu, X } from 'lucide-react';
+import { ArrowUpRight, Menu, X, Facebook, Instagram } from 'lucide-react';
+
+// Custom TikTok SVG Icon
+const TikTokIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.066-.098a2.892 2.892 0 0 1 2.383-4.526c.294 0 .578.044.845.127V9.387a6.335 6.335 0 0 0-.845-.057c-3.525 0-6.388 2.862-6.388 6.388 0 3.525 2.863 6.388 6.388 6.388 3.483 0 6.315-2.791 6.384-6.257V8.847c1.32.96 2.935 1.528 4.678 1.547v-3.7a4.8 4.8 0 0 1-.963-.008z" />
+  </svg>
+);
 
 interface NavbarProps {
   onOpenPreOrder: () => void;
@@ -16,105 +23,76 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenPreOrder }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
-    { label: 'Virtual ePhone', href: '#virtual-phone' },
-    { label: 'Hardware Craft', href: '#pillars' },
-    { label: 'ePhone Features', href: '#features' },
-    { label: 'Cloud Tech', href: '#cloud-tech' },
+  const socialLinks = [
+    {
+      name: 'Facebook',
+      href: 'https://web.facebook.com/share/p/19ckLix5MU/',
+      icon: Facebook,
+    },
+    {
+      name: 'TikTok',
+      href: 'https://www.tiktok.com/@teladu6',
+      icon: TikTokIcon,
+    },
+    {
+      name: 'Instagram',
+      href: 'https://instagram.com/teladu',
+      icon: Instagram,
+    },
   ];
-
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    e.preventDefault();
-    setMobileMenuOpen(false);
-    const target = document.querySelector(href);
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <header
       className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-[#050811]/90 backdrop-blur-xl border-b border-blue-500/20 shadow-lg shadow-black/40 py-3.5'
-          : 'bg-transparent py-5'
+          ? 'bg-[#050811]/90 backdrop-blur-xl border-b border-blue-500/20 shadow-lg shadow-black/40 py-2.5 sm:py-3'
+          : 'bg-transparent py-3 sm:py-4'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        {/* Header Brand Logo (Allowed) */}
+        {/* Header Brand Logo */}
         <a
           href="#top"
-          className="flex items-center gap-3 group focus-visible:outline-none"
+          className="flex items-center gap-2.5 group focus-visible:outline-none"
         >
-          <TeladuLogo size={28} />
-          <span className="hidden sm:inline-block w-px h-4 bg-white/20" />
-          <span className="text-xs font-mono font-semibold text-cyan-400 uppercase tracking-widest hidden sm:inline-block">
+          <TeladuLogo size={26} />
+          <span className="hidden sm:inline-block w-px h-3.5 bg-white/20" />
+          <span className="text-[11px] font-mono font-semibold text-cyan-400 uppercase tracking-widest hidden sm:inline-block">
             V1 · Cloud ePhone
           </span>
         </a>
 
-        {/* Navigation Links */}
-        <nav className="hidden md:flex items-center gap-8 text-xs font-semibold uppercase tracking-wider text-slate-300">
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              onClick={(e) => handleNavClick(e, link.href)}
-              className="hover:text-white transition-colors relative py-1 focus-visible:outline-none"
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
+        {/* Social Media Links (Replaced Heading Texts) */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          {socialLinks.map((item) => {
+            const Icon = item.icon;
+            return (
+              <a
+                key={item.name}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={item.name}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-slate-300 hover:text-white flex items-center justify-center transition-all shadow-[0_0_10px_rgba(0,71,255,0.2)] hover:shadow-[0_0_15px_rgba(0,180,255,0.5)] cursor-pointer"
+                aria-label={item.name}
+              >
+                <Icon className="w-4 h-4" />
+              </a>
+            );
+          })}
+        </div>
 
-        {/* Button: White with blue text and neon blue halo */}
-        <div className="flex items-center gap-3">
+        {/* Clear Glassy, Smaller Action Button */}
+        <div className="flex items-center gap-2.5">
           <button
             onClick={onOpenPreOrder}
-            className="px-5 py-2.5 rounded-full bg-white text-[#0038ff] font-bold text-xs uppercase tracking-wider shadow-[0_0_18px_rgba(0,56,255,0.7)] hover:shadow-[0_0_28px_rgba(0,56,255,0.95)] hover:bg-slate-50 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+            className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/25 backdrop-blur-xl border border-white/25 hover:border-cyan-400/60 text-white font-bold text-[11px] tracking-wide shadow-[0_0_15px_rgba(0,71,255,0.35)] transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
           >
             <span>Early Bird $29</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-[#0038ff]" />
-          </button>
-
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-slate-400 hover:text-white rounded-lg focus-visible:outline-none"
-            aria-label="Toggle Navigation Menu"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <ArrowUpRight className="w-3 h-3 text-cyan-300" />
           </button>
         </div>
       </div>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-[#050811]/95 backdrop-blur-2xl border-b border-blue-500/20 px-6 py-5 space-y-4">
-          <nav className="flex flex-col space-y-3">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={(e) => handleNavClick(e, link.href)}
-                className="text-sm font-medium text-slate-200 hover:text-cyan-400 py-1"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-          <div className="pt-3 border-t border-white/10">
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenPreOrder();
-              }}
-              className="w-full py-3 text-xs font-bold uppercase tracking-wider bg-white text-[#0038ff] shadow-[0_0_20px_rgba(0,56,255,0.7)] rounded-full"
-            >
-              Get Your Teladu V1 · $29
-            </button>
-          </div>
-        </div>
-      )}
     </header>
   );
 };

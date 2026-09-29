@@ -5,7 +5,7 @@ import {
   Users, Calendar, Mail, Folder, Wifi, Settings, Cpu, Shield,
   Volume2, VolumeX, Power, RotateCw, Sparkles, ChevronLeft,
   X, Check, Send, Search, Plus, Trash2, ArrowUpRight, Radio,
-  Battery, BatteryCharging, Sliders, Moon, Sun, Bell, Flashlight, CheckCircle2
+  Battery, BatteryCharging, Sliders, Moon, Sun, Bell, Flashlight
 } from 'lucide-react';
 import { TeladuIcon } from './TeladuLogo';
 import { playButtonHaptic, playBootChime, playShutterSound, playDtmfTone, triggerHaptic } from '../services/soundService';
@@ -28,7 +28,6 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
   initialApp = null,
   enableFloating = true,
 }) => {
-  // Real-time Device Battery Hook
   const battery = useBattery();
 
   // Device Power & Lifecycle States
@@ -40,6 +39,9 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
   const [activeApp, setActiveApp] = useState<string | null>(initialApp);
   const [isLandscape, setIsLandscape] = useState(false);
   const [showQuickSettings, setShowQuickSettings] = useState(false);
+
+  // Interaction State: Freeze/Static while user is touching, hovering, or using apps
+  const [isInteracting, setIsInteracting] = useState(false);
 
   // Notification Toast State
   const [phoneToast, setPhoneToast] = useState<PhoneToastData | null>(null);
@@ -85,10 +87,20 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  const rotateXSpring = useSpring(useTransform(mouseY, [-200, 200], [8, -8]), { stiffness: 150, damping: 20 });
-  const rotateYSpring = useSpring(useTransform(mouseX, [-200, 200], [-10, 10]), { stiffness: 150, damping: 20 });
+  const rotateXSpring = useSpring(useTransform(mouseY, [-200, 200], [6, -6]), { stiffness: 180, damping: 25 });
+  const rotateYSpring = useSpring(useTransform(mouseX, [-200, 200], [-8, 8]), { stiffness: 180, damping: 25 });
 
+  // Determine whether the phone should be static:
+  // User asked: "Make the interactive virtual phone to be static while someone is going through it interface and functions."
+  const isFrozenStatic = isInteracting || activeApp !== null || inCall || showQuickSettings || isBooting || !isLocked;
+
+  // Only tilt when NOT interacting and NOT exploring functions
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isFrozenStatic) {
+      mouseX.set(0);
+      mouseY.set(0);
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
@@ -99,6 +111,10 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
   const handleMouseLeave = () => {
     mouseX.set(0);
     mouseY.set(0);
+    // Keep static if an app is open or phone is unlocked
+    if (!activeApp && isLocked && !inCall) {
+      setIsInteracting(false);
+    }
   };
 
   // Glassy Animated Boot-Up Sequence with Progress Bar
@@ -109,7 +125,7 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
       setBootProgress(0);
 
       const startTime = Date.now();
-      const duration = 2400;
+      const duration = 2200;
 
       progressTimer = setInterval(() => {
         const elapsed = Date.now() - startTime;
@@ -123,7 +139,7 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
             setIsPoweredOn(true);
             setIsLocked(true);
             showToast('Teladu OS 3.2 Loaded', 'Cloud Enclave Active · 5G Connected', <TeladuIcon size={16} />);
-          }, 300);
+          }, 250);
         }
       }, 40);
     }
@@ -143,6 +159,7 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
 
   const handlePowerButton = () => {
     playButtonHaptic();
+    setIsInteracting(true);
     if (!isPoweredOn) {
       setIsBooting(true);
     } else {
@@ -154,6 +171,7 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
 
   const handleVolumeChange = (delta: number) => {
     playButtonHaptic();
+    setIsInteracting(true);
     const newVol = Math.max(0, Math.min(100, volume + delta));
     setVolume(newVol);
     showToast(`Volume ${newVol}%`, delta > 0 ? 'Audio level increased' : 'Audio level decreased', <Volume2 className="w-3.5 h-3.5 text-cyan-400" />);
@@ -161,27 +179,34 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
 
   const handleRotateToggle = () => {
     playButtonHaptic();
+    setIsInteracting(true);
     const nextState = !isLandscape;
     setIsLandscape(nextState);
     showToast('Display Rotation', nextState ? 'Switched to Landscape Mode' : 'Switched to Portrait Mode', <RotateCw className="w-3.5 h-3.5 text-cyan-400" />);
   };
 
-  // Camera stream
+  // Safe camera stream for iOS Safari & Android
   useEffect(() => {
     if (activeApp === 'camera') {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then((stream) => {
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-            }
-          })
-          .catch(() => {});
-      }
+      try {
+        if (typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+            .then((stream) => {
+              if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+              }
+            })
+            .catch(() => {
+              // Gracefully handle denied permission on iOS/Android
+            });
+        }
+      } catch {}
     } else {
       if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
+        try {
+          const stream = videoRef.current.srcObject as MediaStream;
+          stream.getTracks().forEach((track) => track.stop());
+        } catch {}
       }
     }
   }, [activeApp]);
@@ -236,57 +261,70 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
 
   return (
     <div
+      onMouseEnter={() => setIsInteracting(true)}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className={`relative flex flex-col items-center justify-center select-none py-6 ${className}`}
+      onTouchStart={() => setIsInteracting(true)}
+      className={`relative flex flex-col items-center justify-center select-none py-1 sm:py-6 max-w-full overflow-hidden ${className}`}
       style={{ perspective: 1200 }}
     >
       {/* Outer Atmospheric Glow */}
-      <div className="absolute inset-0 bg-blue-600/15 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute inset-0 bg-blue-600/15 blur-[100px] rounded-full pointer-events-none" />
 
-      {/* Motion Floating Wrapper */}
+      {/* Motion Floating Wrapper: FREEZES / STAYS STATIC when user is interacting or using apps! */}
       <motion.div
-        animate={enableFloating ? { y: [0, -10, 0] } : undefined}
-        transition={enableFloating ? { duration: 5, repeat: Infinity, ease: 'easeInOut' } : undefined}
+        animate={
+          enableFloating && !isFrozenStatic
+            ? { y: [0, -8, 0] }
+            : { y: 0 }
+        }
+        transition={
+          enableFloating && !isFrozenStatic
+            ? { duration: 5, repeat: Infinity, ease: 'easeInOut' }
+            : { duration: 0.3 }
+        }
         style={{
-          rotateX: rotateXSpring,
-          rotateY: rotateYSpring,
+          rotateX: isFrozenStatic ? 0 : rotateXSpring,
+          rotateY: isFrozenStatic ? 0 : rotateYSpring,
           transformStyle: 'preserve-3d',
         }}
-        className="relative flex items-center"
+        className="relative flex items-center max-w-full"
       >
         {/* Left Hardware Buttons: Glowing Electric Blue with Neon Halo */}
-        <div className="flex flex-col gap-6 mr-[-2px] z-30">
+        <div className="flex flex-col gap-3 sm:gap-6 mr-[-2px] z-30">
           <button
             onClick={() => handleVolumeChange(10)}
             title="Volume Up"
-            className="w-2.5 h-12 rounded-l-md bg-blue-600 hover:bg-cyan-400 active:bg-white shadow-[0_0_15px_#0047ff] transition-all cursor-pointer border-y border-l border-cyan-300/60"
+            className="w-1.5 sm:w-2.5 h-7 sm:h-11 rounded-l-md bg-blue-600 hover:bg-cyan-400 active:bg-white shadow-[0_0_12px_#0047ff] transition-all cursor-pointer border-y border-l border-cyan-300/60"
             aria-label="Volume Up"
           />
           <button
             onClick={() => handleVolumeChange(-10)}
             title="Volume Down"
-            className="w-2.5 h-12 rounded-l-md bg-blue-600 hover:bg-cyan-400 active:bg-white shadow-[0_0_15px_#0047ff] transition-all cursor-pointer border-y border-l border-cyan-300/60"
+            className="w-1.5 sm:w-2.5 h-7 sm:h-11 rounded-l-md bg-blue-600 hover:bg-cyan-400 active:bg-white shadow-[0_0_12px_#0047ff] transition-all cursor-pointer border-y border-l border-cyan-300/60"
             aria-label="Volume Down"
           />
           <button
             onClick={handleRotateToggle}
             title="Rotate Device"
-            className="w-2.5 h-8 rounded-l-md bg-cyan-500 hover:bg-white shadow-[0_0_12px_#00f0ff] transition-all cursor-pointer border-y border-l border-cyan-200/60"
+            className="w-1.5 sm:w-2.5 h-5 sm:h-7 rounded-l-md bg-cyan-500 hover:bg-white shadow-[0_0_10px_#00f0ff] transition-all cursor-pointer border-y border-l border-cyan-200/60"
             aria-label="Rotate Orientation"
           />
         </div>
 
-        {/* The Crystal Glass Phone Body (Matching T-V1.png) */}
+        {/* The Crystal Glass Phone Body: COMPACT and optimized on mobile (215px-235px) and desktop (335px) */}
         <div
-          className={`relative rounded-[50px] p-[10px] bg-gradient-to-b from-white/35 via-slate-400/20 to-white/15 backdrop-blur-3xl border-2 border-white/50 shadow-[0_25px_60px_-15px_rgba(0,56,255,0.45),0_0_35px_rgba(255,255,255,0.2)] transition-all duration-300 ${
-            isLandscape ? 'w-[680px] h-[360px]' : 'w-[340px] sm:w-[380px] h-[720px]'
+          onClick={() => setIsInteracting(true)}
+          className={`relative rounded-[36px] sm:rounded-[48px] p-[6px] sm:p-[10px] bg-gradient-to-b from-white/35 via-slate-400/20 to-white/15 backdrop-blur-3xl border-2 border-white/50 shadow-[0_20px_50px_-15px_rgba(0,56,255,0.45),0_0_30px_rgba(255,255,255,0.2)] transition-all duration-300 ${
+            isLandscape
+              ? 'w-[90vw] sm:w-[500px] md:w-[600px] h-[280px] sm:h-[340px]'
+              : 'w-[215px] xs:w-[235px] sm:w-[290px] md:w-[335px] h-[450px] xs:h-[490px] sm:h-[600px] md:h-[650px]'
           }`}
         >
           {/* Polished Chrome Inner Rim */}
-          <div className="w-full h-full rounded-[40px] p-[3px] bg-gradient-to-b from-slate-200 via-slate-700 to-slate-400 shadow-inner relative overflow-hidden">
+          <div className="w-full h-full rounded-[34px] sm:rounded-[40px] p-[2px] sm:p-[3px] bg-gradient-to-b from-slate-200 via-slate-700 to-slate-400 shadow-inner relative overflow-hidden">
             {/* Screen Glass Surface */}
-            <div className="relative w-full h-full rounded-[37px] bg-[#050811] overflow-hidden flex flex-col justify-between text-white font-sans">
+            <div className="relative w-full h-full rounded-[32px] sm:rounded-[37px] bg-[#050811] overflow-hidden flex flex-col justify-between text-white font-sans">
 
               {/* GLASSY NEON-BLUE NOTIFICATION TOAST COMPONENT */}
               <AnimatePresence>
@@ -296,17 +334,17 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -15, scale: 0.95 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                    className="absolute top-10 inset-x-4 z-50 p-2.5 rounded-2xl bg-slate-950/85 backdrop-blur-2xl border border-cyan-400/50 shadow-[0_0_25px_rgba(0,210,255,0.45)] flex items-center gap-3"
+                    className="absolute top-8 sm:top-10 inset-x-3 sm:inset-x-4 z-50 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-slate-950/85 backdrop-blur-2xl border border-cyan-400/50 shadow-[0_0_25px_rgba(0,210,255,0.45)] flex items-center gap-2.5"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-blue-600/30 text-cyan-300 border border-cyan-400/40 flex items-center justify-center shrink-0 shadow-[0_0_10px_#00f0ff]">
-                      {phoneToast.icon || <Bell className="w-4 h-4 text-cyan-300" />}
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-600/30 text-cyan-300 border border-cyan-400/40 flex items-center justify-center shrink-0 shadow-[0_0_10px_#00f0ff]">
+                      {phoneToast.icon || <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-300" />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-white tracking-tight truncate flex items-center gap-1.5">
+                      <div className="text-[11px] sm:text-xs font-bold text-white tracking-tight truncate flex items-center gap-1.5">
                         <span>{phoneToast.title}</span>
                         <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
                       </div>
-                      <div className="text-[10px] text-cyan-200/80 truncate font-mono mt-0.5">
+                      <div className="text-[9px] sm:text-[10px] text-cyan-200/80 truncate font-mono mt-0.5">
                         {phoneToast.subtitle}
                       </div>
                     </div>
@@ -316,10 +354,10 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
 
               {/* Quick Settings Panel (Android Dropdown) */}
               {showQuickSettings && (
-                <div className="absolute inset-x-0 top-0 z-40 bg-slate-950/95 backdrop-blur-2xl border-b border-cyan-500/30 p-5 space-y-4 animate-in slide-in-from-top-6 duration-200">
+                <div className="absolute inset-x-0 top-0 z-40 bg-slate-950/95 backdrop-blur-2xl border-b border-cyan-500/30 p-4 sm:p-5 space-y-3 sm:space-y-4 animate-in slide-in-from-top-6 duration-200">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-semibold text-cyan-400 uppercase tracking-widest">
-                      Android 15 Quick Settings
+                    <span className="text-[11px] sm:text-xs font-mono font-semibold text-cyan-400 uppercase tracking-widest">
+                      Quick Settings
                     </span>
                     <button
                       onClick={() => setShowQuickSettings(false)}
@@ -328,17 +366,17 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
+                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-center text-[9px] sm:text-[10px]">
                     <button
                       onClick={() => {
                         setWifiEnabled(!wifiEnabled);
                         showToast('Wi-Fi Network', !wifiEnabled ? 'Connected to Teladu Cloud Fiber' : 'Wi-Fi Disconnected');
                       }}
-                      className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                      className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl border flex flex-col items-center gap-1 transition-all cursor-pointer ${
                         wifiEnabled ? 'bg-blue-600 border-cyan-400 text-white' : 'bg-slate-900 border-white/5 text-slate-500'
                       }`}
                     >
-                      <Wifi className="w-4 h-4" />
+                      <Wifi className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       <span>Wi-Fi</span>
                     </button>
                     <button
@@ -346,11 +384,11 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                         setBluetoothEnabled(!bluetoothEnabled);
                         showToast('eSIM Radio', !bluetoothEnabled ? 'Teladu 5G Enabled' : 'Radio Standby');
                       }}
-                      className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                      className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl border flex flex-col items-center gap-1 transition-all cursor-pointer ${
                         bluetoothEnabled ? 'bg-blue-600 border-cyan-400 text-white' : 'bg-slate-900 border-white/5 text-slate-500'
                       }`}
                     >
-                      <Radio className="w-4 h-4" />
+                      <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       <span>eSIM 5G</span>
                     </button>
                     <button
@@ -358,11 +396,11 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                         setDarkMode(!darkMode);
                         showToast('Display Mode', !darkMode ? 'Dark Theme Activated' : 'Light Theme Activated');
                       }}
-                      className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                      className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl border flex flex-col items-center gap-1 transition-all cursor-pointer ${
                         darkMode ? 'bg-blue-600 border-cyan-400 text-white' : 'bg-slate-900 border-white/5 text-slate-500'
                       }`}
                     >
-                      <Moon className="w-4 h-4" />
+                      <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       <span>Dark</span>
                     </button>
                     <button
@@ -370,16 +408,16 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                         setFlashlightOn(!flashlightOn);
                         showToast('Flashlight Torch', !flashlightOn ? 'Rear LED Torch ON' : 'Torch OFF');
                       }}
-                      className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                      className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl border flex flex-col items-center gap-1 transition-all cursor-pointer ${
                         flashlightOn ? 'bg-amber-500 border-amber-300 text-slate-950' : 'bg-slate-900 border-white/5 text-slate-500'
                       }`}
                     >
-                      <Flashlight className="w-4 h-4" />
+                      <Flashlight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       <span>Torch</span>
                     </button>
                   </div>
-                  <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-white/10 font-mono">
-                    <span>Battery Status: {battery.level}% {battery.charging ? '(Charging)' : ''}</span>
+                  <div className="pt-2 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 border-t border-white/10 font-mono">
+                    <span>Battery: {battery.level}%</span>
                     <span className="text-cyan-400">{battery.isReal ? 'Hardware Synced' : 'Cloud Simulated'}</span>
                   </div>
                 </div>
@@ -387,27 +425,27 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
 
               {/* State 1: Glassy Animated Boot Sequence with Sleek Neon-Cyan Progress Bar */}
               {isBooting ? (
-                <div className="flex-1 flex flex-col items-center justify-center bg-black p-6 space-y-6 animate-in fade-in duration-300">
-                  <div className="w-20 h-20 rounded-3xl bg-blue-600/20 flex items-center justify-center border border-blue-500/50 shadow-[0_0_35px_#0038ff] animate-pulse">
-                    <TeladuIcon size={56} />
+                <div className="flex-1 flex flex-col items-center justify-center bg-black p-4 sm:p-6 space-y-4 sm:space-y-6 animate-in fade-in duration-300">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-blue-600/20 flex items-center justify-center border border-blue-500/50 shadow-[0_0_35px_#0038ff] animate-pulse">
+                    <TeladuIcon size={46} />
                   </div>
                   
                   <div className="text-center space-y-1">
-                    <div className="font-sans text-xl font-bold tracking-tight text-white">teladu</div>
-                    <div className="text-[11px] font-mono text-cyan-400 uppercase tracking-widest">
+                    <div className="font-sans text-lg sm:text-xl font-bold tracking-tight text-white">teladu</div>
+                    <div className="text-[10px] sm:text-[11px] font-mono text-cyan-400 uppercase tracking-widest">
                       Android 15 · Cloud OS
                     </div>
                   </div>
 
                   {/* Sleek Neon-Cyan Animated Progress Bar Container */}
-                  <div className="w-48 space-y-2">
+                  <div className="w-36 sm:w-48 space-y-2">
                     <div className="h-1.5 w-full bg-slate-900/90 border border-cyan-500/30 rounded-full overflow-hidden p-[1px] shadow-[0_0_15px_rgba(0,210,255,0.25)]">
                       <div
                         className="h-full bg-gradient-to-r from-blue-600 via-cyan-400 to-white rounded-full transition-all duration-75 shadow-[0_0_12px_#00f0ff]"
                         style={{ width: `${bootProgress}%` }}
                       />
                     </div>
-                    <div className="flex justify-between text-[10px] font-mono text-cyan-300">
+                    <div className="flex justify-between text-[9px] sm:text-[10px] font-mono text-cyan-300">
                       <span>Booting Enclave</span>
                       <span className="font-bold tabular-nums">{bootProgress}%</span>
                     </div>
@@ -417,22 +455,22 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                 /* State 2: Power Off Screen */
                 <div
                   onClick={() => setIsBooting(true)}
-                  className="flex-1 flex flex-col items-center justify-center bg-black cursor-pointer group"
+                  className="flex-1 flex flex-col items-center justify-center bg-black cursor-pointer group p-4"
                 >
-                  <Power className="w-8 h-8 text-slate-700 group-hover:text-blue-500 transition-colors" />
-                  <span className="text-[11px] text-slate-600 group-hover:text-slate-400 mt-2 font-mono">
-                    Click to Power On
+                  <Power className="w-7 h-7 sm:w-8 sm:h-8 text-slate-700 group-hover:text-blue-500 transition-colors" />
+                  <span className="text-[10px] sm:text-[11px] text-slate-600 group-hover:text-slate-400 mt-2 font-mono text-center">
+                    Tap to Power On
                   </span>
                 </div>
               ) : isLocked ? (
-                /* State 3: Lock Screen (Matching T-V1.png with Mountain Sunset) */
+                /* State 3: Lock Screen (Mountain Sunset) */
                 <div
                   onClick={() => {
                     playButtonHaptic();
                     setIsLocked(false);
                     showToast('Welcome to Teladu V1', 'Swipe gestures active');
                   }}
-                  className={`flex-1 flex flex-col justify-between p-6 bg-gradient-to-b ${wallpaperGradients[activeWallpaper]} relative cursor-pointer overflow-hidden`}
+                  className={`flex-1 flex flex-col justify-between p-4 sm:p-6 bg-gradient-to-b ${wallpaperGradients[activeWallpaper]} relative cursor-pointer overflow-hidden`}
                 >
                   {/* Status Bar */}
                   <div
@@ -440,50 +478,50 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                       e.stopPropagation();
                       setShowQuickSettings(true);
                     }}
-                    className="flex items-center justify-between text-xs text-white/95 pt-1 font-mono hover:bg-black/20 p-1 rounded-lg transition-colors cursor-pointer"
+                    className="flex items-center justify-between text-[11px] sm:text-xs text-white/95 pt-0.5 font-mono hover:bg-black/20 p-1 rounded-lg transition-colors cursor-pointer"
                   >
                     <span className="font-semibold">9:41</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <Radio className="w-3 h-3 text-cyan-300 animate-pulse" />
-                      <span className="text-[10px] text-cyan-200">Teladu 5G</span>
-                      <Wifi className="w-3.5 h-3.5" />
+                      <span className="text-[9px] sm:text-[10px] text-cyan-200">5G</span>
+                      <Wifi className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       <div className="flex items-center gap-1">
                         {battery.charging ? (
-                          <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+                          <BatteryCharging className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
                         ) : (
-                          <Battery className="w-3.5 h-3.5 text-white" />
+                          <Battery className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                         )}
-                        <span className="text-[10px] tabular-nums">{battery.level}%</span>
+                        <span className="text-[9px] sm:text-[10px] tabular-nums">{battery.level}%</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Punch Hole Camera at Top Center */}
-                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-black border border-white/20 shadow-sm" />
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-black border border-white/20 shadow-sm" />
 
-                  {/* Lock Screen Clock & Date matching T-V1.png */}
+                  {/* Lock Screen Clock & Date */}
                   <div className="text-center my-auto">
-                    <h1 className="text-6xl sm:text-7xl font-display font-extrabold text-white tracking-tight drop-shadow-xl">
+                    <h1 className="text-5xl sm:text-6xl md:text-7xl font-display font-extrabold text-white tracking-tight drop-shadow-xl">
                       9:41
                     </h1>
-                    <p className="text-sm font-medium text-slate-100 mt-1 drop-shadow">
+                    <p className="text-xs sm:text-sm font-medium text-slate-100 mt-1 drop-shadow">
                       Mon, Sep 22
                     </p>
 
-                    <div className="mt-8 flex flex-col items-center opacity-85">
-                      <TeladuIcon size={44} />
-                      <span className="text-xs font-semibold tracking-wide text-white/90 mt-1">
+                    <div className="mt-6 sm:mt-8 flex flex-col items-center opacity-85">
+                      <TeladuIcon size={38} />
+                      <span className="text-[11px] sm:text-xs font-semibold tracking-wide text-white/90 mt-1">
                         teladu
                       </span>
                     </div>
                   </div>
 
                   {/* Bottom Unlock Prompt */}
-                  <div className="text-center pb-4">
-                    <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white/80 animate-bounce">
-                      <span>Swipe or Click to Unlock</span>
+                  <div className="text-center pb-2 sm:pb-4">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-[11px] sm:text-xs text-white/80 animate-bounce">
+                      <span>Tap to Unlock</span>
                     </div>
-                    <div className="text-[10px] font-mono text-cyan-300 mt-2">
+                    <div className="text-[9px] sm:text-[10px] font-mono text-cyan-300 mt-1.5">
                       V1 - Cloud ePhone
                     </div>
                   </div>
@@ -491,15 +529,15 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
               ) : activeApp ? (
                 /* State 4: Active Open App View */
                 <div className="flex-1 flex flex-col bg-slate-950 overflow-hidden">
-                  <div className="p-3 bg-slate-900/90 border-b border-white/10 flex items-center justify-between text-xs">
+                  <div className="p-2.5 sm:p-3 bg-slate-900/90 border-b border-white/10 flex items-center justify-between text-xs">
                     <button
                       onClick={() => setActiveApp(null)}
-                      className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 py-1 px-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+                      className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 py-1 px-1.5 rounded-lg hover:bg-white/5 cursor-pointer text-[11px] sm:text-xs"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       <span>Home</span>
                     </button>
-                    <span className="font-semibold capitalize text-white">{activeApp}</span>
+                    <span className="font-semibold capitalize text-white text-[11px] sm:text-xs">{activeApp}</span>
                     <button
                       onClick={() => setActiveApp(null)}
                       className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer"
@@ -508,18 +546,18 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 text-xs">
+                  <div className="flex-1 overflow-y-auto p-3 sm:p-4 text-xs">
                     {/* Calls App */}
                     {activeApp === 'calls' && (
                       <div className="h-full flex flex-col justify-between">
                         {inCall ? (
-                          <div className="text-center py-12 space-y-4">
-                            <div className="w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center border border-emerald-500/40 animate-pulse">
-                              <Phone className="w-8 h-8" />
+                          <div className="text-center py-8 sm:py-12 space-y-4">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center border border-emerald-500/40 animate-pulse">
+                              <Phone className="w-7 h-7 sm:w-8 sm:h-8" />
                             </div>
                             <div>
-                              <div className="text-lg font-bold text-white">{dialedNumber || 'Teladu Cloud Voice'}</div>
-                              <div className="font-mono text-cyan-400 text-sm mt-1">
+                              <div className="text-base sm:text-lg font-bold text-white">{dialedNumber || 'Teladu Cloud Voice'}</div>
+                              <div className="font-mono text-cyan-400 text-xs sm:text-sm mt-1">
                                 {Math.floor(callDuration / 60)}:{(callDuration % 60).toString().padStart(2, '0')}
                               </div>
                             </div>
@@ -528,28 +566,28 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                                 setInCall(false);
                                 showToast('Call Terminated', 'Voice session ended');
                               }}
-                              className="px-6 py-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white font-semibold shadow-lg shadow-red-600/30 cursor-pointer"
+                              className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white font-semibold shadow-lg shadow-red-600/30 cursor-pointer text-xs"
                             >
                               End Call
                             </button>
                           </div>
                         ) : (
-                          <div className="space-y-4">
-                            <div className="text-center font-mono text-2xl h-10 text-white font-bold tracking-widest border-b border-white/10 pb-2">
-                              {dialedNumber || <span className="text-slate-600 text-sm font-normal">Enter phone number...</span>}
+                          <div className="space-y-3 sm:space-y-4">
+                            <div className="text-center font-mono text-xl sm:text-2xl h-8 sm:h-10 text-white font-bold tracking-widest border-b border-white/10 pb-1.5">
+                              {dialedNumber || <span className="text-slate-600 text-xs sm:text-sm font-normal">Enter phone number...</span>}
                             </div>
-                            <div className="grid grid-cols-3 gap-3 max-w-[240px] mx-auto">
+                            <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-[220px] sm:max-w-[240px] mx-auto">
                               {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((k) => (
                                 <button
                                   key={k}
                                   onClick={() => handleDialKey(k)}
-                                  className="w-14 h-14 rounded-full bg-slate-900 border border-white/10 text-lg font-bold hover:bg-blue-600 hover:border-blue-400 transition-all active:scale-95 shadow-md flex items-center justify-center cursor-pointer"
+                                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-slate-900 border border-white/10 text-base sm:text-lg font-bold hover:bg-blue-600 hover:border-blue-400 transition-all active:scale-95 shadow-md flex items-center justify-center cursor-pointer"
                                 >
                                   {k}
                                 </button>
                               ))}
                             </div>
-                            <div className="flex justify-center gap-4 pt-2">
+                            <div className="flex justify-center gap-3 sm:gap-4 pt-1 sm:pt-2">
                               <button
                                 onClick={() => {
                                   if (dialedNumber) {
@@ -557,14 +595,14 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                                     showToast('Calling Gateway', `Routing to ${dialedNumber}`, <Phone className="w-3.5 h-3.5 text-emerald-400" />);
                                   }
                                 }}
-                                className="w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 flex items-center justify-center active:scale-95 cursor-pointer"
+                                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 flex items-center justify-center active:scale-95 cursor-pointer"
                               >
-                                <Phone className="w-6 h-6" />
+                                <Phone className="w-5 h-5 sm:w-6 sm:h-6" />
                               </button>
                               {dialedNumber && (
                                 <button
                                   onClick={() => setDialedNumber('')}
-                                  className="w-14 h-14 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 cursor-pointer"
+                                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 cursor-pointer text-xs"
                                 >
                                   Clear
                                 </button>
@@ -578,14 +616,14 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                     {/* Messages App */}
                     {activeApp === 'messages' && (
                       <div className="h-full flex flex-col justify-between">
-                        <div className="space-y-3 overflow-y-auto max-h-[440px] pr-1">
+                        <div className="space-y-2 sm:space-y-3 overflow-y-auto max-h-[380px] sm:max-h-[440px] pr-1">
                           {messages.map((m, i) => (
                             <div
                               key={i}
                               className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
                             >
                               <div
-                                className={`p-3 rounded-2xl max-w-[85%] leading-relaxed ${
+                                className={`p-2.5 sm:p-3 rounded-2xl max-w-[85%] leading-relaxed text-[11px] sm:text-xs ${
                                   m.sender === 'user'
                                     ? 'bg-blue-600 text-white rounded-br-none shadow-md'
                                     : 'bg-slate-900 border border-white/10 text-slate-200 rounded-bl-none'
@@ -593,7 +631,7 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                               >
                                 {m.text}
                               </div>
-                              <span className="text-[9px] text-slate-500 mt-0.5 px-1 font-mono">{m.time}</span>
+                              <span className="text-[8px] sm:text-[9px] text-slate-500 mt-0.5 px-1 font-mono">{m.time}</span>
                             </div>
                           ))}
                         </div>
@@ -602,20 +640,20 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                             e.preventDefault();
                             handleSendMessage();
                           }}
-                          className="pt-2 flex gap-2"
+                          className="pt-2 flex gap-1.5 sm:gap-2"
                         >
                           <input
                             type="text"
                             value={messageInput}
                             onChange={(e) => setMessageInput(e.target.value)}
-                            placeholder="Message Teladu Assistant..."
-                            className="flex-1 px-3 py-2 bg-slate-900 rounded-xl border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            placeholder="Message Teladu..."
+                            className="flex-1 px-3 py-1.5 sm:py-2 bg-slate-900 rounded-xl border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
                           />
                           <button
                             type="submit"
                             className="p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-md cursor-pointer"
                           >
-                            <Send className="w-4 h-4" />
+                            <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </button>
                         </form>
                       </div>
@@ -624,12 +662,12 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                     {/* Browser App */}
                     {activeApp === 'browser' && (
                       <div className="h-full flex flex-col">
-                        <div className="flex gap-1.5 pb-3">
+                        <div className="flex gap-1.5 pb-2.5">
                           <input
                             type="text"
                             value={browserInput}
                             onChange={(e) => setBrowserInput(e.target.value)}
-                            className="flex-1 px-3 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-white font-mono text-[11px]"
+                            className="flex-1 px-2.5 py-1 sm:py-1.5 bg-slate-900 border border-white/10 rounded-lg text-white font-mono text-[10px] sm:text-[11px]"
                           />
                           <button
                             onClick={() => showToast('Navigating', browserInput, <Globe className="w-3.5 h-3.5 text-cyan-400" />)}
@@ -638,15 +676,15 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                             Go
                           </button>
                         </div>
-                        <div className="flex-1 rounded-xl bg-slate-900/60 border border-white/5 p-4 space-y-4">
-                          <div className="flex items-center gap-2 text-cyan-400 font-semibold border-b border-white/10 pb-2">
-                            <Globe className="w-4 h-4" />
-                            <span>Teladu Cloud Gateway Active</span>
+                        <div className="flex-1 rounded-xl bg-slate-900/60 border border-white/5 p-3 space-y-3">
+                          <div className="flex items-center gap-2 text-cyan-400 font-semibold border-b border-white/10 pb-1.5 text-xs">
+                            <Globe className="w-3.5 h-3.5" />
+                            <span>Teladu Cloud Gateway</span>
                           </div>
-                          <p className="text-slate-300 leading-relaxed">
+                          <p className="text-slate-300 text-[11px] leading-relaxed">
                             Encrypted 5G Cloud Proxy with zero local browsing cache.
                           </p>
-                          <div className="grid grid-cols-2 gap-2 pt-2">
+                          <div className="grid grid-cols-2 gap-1.5 pt-1">
                             {['Teladu Portal', 'Wikipedia', 'TechCrunch', 'HackerNews'].map((site) => (
                               <button
                                 key={site}
@@ -654,7 +692,7 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                                   setBrowserInput(`https://${site.toLowerCase().replace(' ', '')}.com`);
                                   showToast('Bookmark Opened', site);
                                 }}
-                                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-left text-slate-200 cursor-pointer"
+                                className="p-1.5 sm:p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-left text-slate-200 cursor-pointer text-[10px] sm:text-xs"
                               >
                                 {site}
                               </button>
@@ -675,25 +713,25 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                             muted
                             className="w-full h-full object-cover"
                           />
-                          <div className="absolute inset-0 border border-cyan-400/40 rounded-2xl pointer-events-none flex flex-col justify-between p-3">
-                            <div className="flex justify-between text-[10px] font-mono text-cyan-400">
+                          <div className="absolute inset-0 border border-cyan-400/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2.5 sm:p-3">
+                            <div className="flex justify-between text-[9px] sm:text-[10px] font-mono text-cyan-400">
                               <span>200MP OPTICS</span>
                               <span>TELADU V1</span>
                             </div>
-                            <div className="w-16 h-16 border border-cyan-400/50 rounded-lg self-center flex items-center justify-center animate-pulse">
+                            <div className="w-12 h-12 sm:w-16 sm:h-16 border border-cyan-400/50 rounded-lg self-center flex items-center justify-center animate-pulse">
                               <div className="w-1 h-1 bg-cyan-400 rounded-full" />
                             </div>
-                            <div className="text-center text-[10px] text-white/70 font-mono">
+                            <div className="text-center text-[9px] sm:text-[10px] text-white/70 font-mono">
                               AUTO-FOCUS LOCKED
                             </div>
                           </div>
                         </div>
-                        <div className="py-4">
+                        <div className="py-2 sm:py-4">
                           <button
                             onClick={handleCapturePhoto}
-                            className="w-16 h-16 rounded-full border-4 border-white bg-blue-600 hover:bg-blue-500 active:scale-95 shadow-[0_0_20px_#0047ff] flex items-center justify-center cursor-pointer"
+                            className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 border-white bg-blue-600 hover:bg-blue-500 active:scale-95 shadow-[0_0_20px_#0047ff] flex items-center justify-center cursor-pointer"
                           >
-                            <div className="w-10 h-10 rounded-full bg-white" />
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white" />
                           </button>
                         </div>
                       </div>
@@ -701,22 +739,22 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
 
                     {/* Gallery App */}
                     {activeApp === 'gallery' && (
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-white">Your Cloud Media</div>
+                      <div className="space-y-2.5">
+                        <div className="text-xs sm:text-sm font-semibold text-white">Your Cloud Media</div>
                         <div className="grid grid-cols-2 gap-2">
-                          <div className="aspect-square rounded-xl bg-gradient-to-tr from-blue-900 to-cyan-500 p-3 flex flex-col justify-between border border-white/10 shadow-sm">
-                            <span className="text-[10px] font-mono text-cyan-200">SAMPLE 01</span>
-                            <span className="font-semibold text-white">Sunset Glacier</span>
+                          <div className="aspect-square rounded-xl bg-gradient-to-tr from-blue-900 to-cyan-500 p-2.5 flex flex-col justify-between border border-white/10 shadow-sm">
+                            <span className="text-[9px] font-mono text-cyan-200">SAMPLE 01</span>
+                            <span className="font-semibold text-white text-[11px]">Sunset Glacier</span>
                           </div>
-                          <div className="aspect-square rounded-xl bg-gradient-to-tr from-indigo-900 to-purple-600 p-3 flex flex-col justify-between border border-white/10 shadow-sm">
-                            <span className="text-[10px] font-mono text-purple-200">SAMPLE 02</span>
-                            <span className="font-semibold text-white">Neon Horizon</span>
+                          <div className="aspect-square rounded-xl bg-gradient-to-tr from-indigo-900 to-purple-600 p-2.5 flex flex-col justify-between border border-white/10 shadow-sm">
+                            <span className="text-[9px] font-mono text-purple-200">SAMPLE 02</span>
+                            <span className="font-semibold text-white text-[11px]">Neon Horizon</span>
                           </div>
                           {capturedPhotos.map((p, i) => (
-                            <div key={i} className="aspect-square rounded-xl bg-slate-800 p-3 border border-cyan-500/40 flex flex-col justify-between">
-                              <span className="text-[10px] font-mono text-cyan-400">CAPTURED</span>
-                              <Camera className="w-6 h-6 text-white self-center" />
-                              <span className="text-[9px] text-slate-400">{p}</span>
+                            <div key={i} className="aspect-square rounded-xl bg-slate-800 p-2.5 border border-cyan-500/40 flex flex-col justify-between">
+                              <span className="text-[9px] font-mono text-cyan-400">CAPTURED</span>
+                              <Camera className="w-5 h-5 text-white self-center" />
+                              <span className="text-[8px] text-slate-400 truncate">{p}</span>
                             </div>
                           ))}
                         </div>
@@ -725,19 +763,19 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
 
                     {/* eSIM Manager */}
                     {activeApp === 'esim' && (
-                      <div className="space-y-4">
-                        <div className="p-4 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-between">
+                      <div className="space-y-3">
+                        <div className="p-3 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-between">
                           <div>
                             <div className="text-xs font-bold text-white">Teladu Cloud eSIM</div>
-                            <div className="text-[10px] text-cyan-300 font-mono mt-0.5">5G Standalone Ultra</div>
+                            <div className="text-[9px] text-cyan-300 font-mono mt-0.5">5G Standalone Ultra</div>
                           </div>
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[9px] font-bold">
                             Active
                           </span>
                         </div>
 
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-semibold text-slate-400 uppercase">Available Profiles</label>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-semibold text-slate-400 uppercase">Available Profiles</label>
                           {[
                             'Teladu Global 5G (Default)',
                             'US Cloud Mobile (eSIM 2)',
@@ -750,20 +788,20 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                                 setActiveEsim(profile);
                                 showToast('eSIM Profile Switched', profile, <Radio className="w-3.5 h-3.5 text-cyan-400" />);
                               }}
-                              className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                              className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all text-xs ${
                                 activeEsim === profile
                                   ? 'bg-slate-900 border-cyan-400 text-white'
                                   : 'bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200'
                               }`}
                             >
                               <span>{profile}</span>
-                              {activeEsim === profile && <Check className="w-4 h-4 text-cyan-400" />}
+                              {activeEsim === profile && <Check className="w-3.5 h-3.5 text-cyan-400" />}
                             </div>
                           ))}
                         </div>
 
-                        <div className="p-3 rounded-xl bg-slate-900 border border-white/5 flex items-center justify-between">
-                          <span>Global Cloud Roaming</span>
+                        <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5 flex items-center justify-between text-xs">
+                          <span>Global Roaming</span>
                           <input
                             type="checkbox"
                             checked={esimRoaming}
@@ -779,10 +817,10 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
 
                     {/* Settings App */}
                     {activeApp === 'settings' && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <div className="text-[10px] font-semibold text-slate-400 uppercase">Wallpaper Theme</div>
-                          <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <div className="text-[9px] font-semibold text-slate-400 uppercase">Wallpaper Theme</div>
+                          <div className="grid grid-cols-3 gap-1.5">
                             {[
                               { id: 'mountain', label: 'Sunset Mtn' },
                               { id: 'nebula', label: 'Nebula Blue' },
@@ -794,7 +832,7 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                                   setActiveWallpaper(w.id as any);
                                   showToast('Wallpaper Updated', w.label);
                                 }}
-                                className={`p-2 rounded-xl text-center border text-[11px] font-medium transition-all cursor-pointer ${
+                                className={`p-2 rounded-xl text-center border text-[10px] font-medium transition-all cursor-pointer ${
                                   activeWallpaper === w.id
                                     ? 'bg-blue-600 border-cyan-400 text-white'
                                     : 'bg-slate-900 border-white/5 text-slate-400'
@@ -806,17 +844,17 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                           </div>
                         </div>
 
-                        <div className="p-4 rounded-xl bg-slate-900 border border-white/5 space-y-2 text-xs">
+                        <div className="p-3 rounded-xl bg-slate-900 border border-white/5 space-y-1.5 text-xs">
                           <div className="font-semibold text-white">About Teladu V1</div>
-                          <div className="flex justify-between text-slate-400">
-                            <span>OS Architecture:</span>
-                            <span className="text-white font-mono">Android 15 Virtualized</span>
+                          <div className="flex justify-between text-slate-400 text-[11px]">
+                            <span>OS:</span>
+                            <span className="text-white font-mono">Android 15 Virtual</span>
                           </div>
-                          <div className="flex justify-between text-slate-400">
-                            <span>Device Battery:</span>
-                            <span className="text-cyan-400 font-mono">{battery.level}% ({battery.isReal ? 'Hardware Synced' : 'Cloud Simulated'})</span>
+                          <div className="flex justify-between text-slate-400 text-[11px]">
+                            <span>Battery:</span>
+                            <span className="text-cyan-400 font-mono">{battery.level}%</span>
                           </div>
-                          <div className="flex justify-between text-slate-400">
+                          <div className="flex justify-between text-slate-400 text-[11px]">
                             <span>Inquiries:</span>
                             <span className="text-cyan-300 font-mono">teladuv1@gmail.com</span>
                           </div>
@@ -826,12 +864,12 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
 
                     {/* Other App Placeholders */}
                     {['appstore', 'contacts', 'calendar', 'email', 'files', 'assistant'].includes(activeApp) && (
-                      <div className="py-8 text-center space-y-3">
-                        <div className="w-14 h-14 rounded-2xl bg-blue-600/20 text-blue-400 mx-auto flex items-center justify-center border border-blue-500/30">
-                          <Sparkles className="w-6 h-6" />
+                      <div className="py-6 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-600/20 text-blue-400 mx-auto flex items-center justify-center border border-blue-500/30">
+                          <Sparkles className="w-5 h-5" />
                         </div>
-                        <h4 className="text-base font-bold text-white capitalize">{activeApp} App</h4>
-                        <p className="text-slate-400 leading-relaxed max-w-xs mx-auto">
+                        <h4 className="text-sm font-bold text-white capitalize">{activeApp} App</h4>
+                        <p className="text-slate-400 text-xs leading-relaxed max-w-xs mx-auto">
                           Synchronized to your Teladu Cloud profile with sub-12ms response latency.
                         </p>
                       </div>
@@ -841,48 +879,48 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
               ) : (
                 /* State 5: Main Android Home Screen */
                 <div
-                  className={`flex-1 flex flex-col justify-between p-4 bg-gradient-to-b ${wallpaperGradients[activeWallpaper]} overflow-hidden`}
+                  className={`flex-1 flex flex-col justify-between p-3 sm:p-4 bg-gradient-to-b ${wallpaperGradients[activeWallpaper]} overflow-hidden`}
                 >
                   {/* Status Bar */}
                   <div
                     onClick={() => setShowQuickSettings(true)}
-                    className="flex items-center justify-between text-xs text-white/95 font-mono pt-1 hover:bg-black/20 p-1 rounded-lg transition-colors cursor-pointer"
+                    className="flex items-center justify-between text-[10px] sm:text-xs text-white/95 font-mono pt-0.5 hover:bg-black/20 p-1 rounded-lg transition-colors cursor-pointer"
                   >
                     <span className="font-bold">9:41</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <Radio className="w-3 h-3 text-cyan-300 animate-pulse" />
-                      <span className="text-[10px] text-cyan-200 font-semibold">Teladu 5G</span>
+                      <span className="text-[9px] text-cyan-200 font-semibold">5G</span>
                       <Wifi className="w-3 h-3" />
                       <div className="flex items-center gap-1">
                         {battery.charging ? (
-                          <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+                          <BatteryCharging className="w-3 h-3 text-emerald-400" />
                         ) : (
-                          <Battery className="w-3.5 h-3.5 text-white" />
+                          <Battery className="w-3 h-3 text-white" />
                         )}
-                        <span className="text-[10px] font-bold tabular-nums">{battery.level}%</span>
+                        <span className="text-[9px] font-bold tabular-nums">{battery.level}%</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Punch Hole Camera */}
-                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-black border border-white/20 shadow-sm" />
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-black border border-white/20 shadow-sm" />
 
                   {/* Widget: Clock + Date */}
-                  <div className="mt-3 p-4 rounded-2xl bg-black/45 backdrop-blur-xl border border-white/15 shadow-xl">
+                  <div className="mt-2 sm:mt-3 p-3 sm:p-4 rounded-2xl bg-black/45 backdrop-blur-xl border border-white/15 shadow-xl">
                     <div className="flex items-baseline justify-between">
                       <div>
-                        <div className="font-display text-4xl font-extrabold text-white tracking-tight">9:41</div>
-                        <div className="text-xs text-slate-200 mt-0.5">Mon, Sep 22 · 72° Sunny</div>
+                        <div className="font-display text-3xl sm:text-4xl font-extrabold text-white tracking-tight">9:41</div>
+                        <div className="text-[10px] sm:text-xs text-slate-200 mt-0.5">Mon, Sep 22 · 72° Sunny</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[10px] font-mono text-cyan-400 font-bold uppercase">Cloud 5G Active</div>
-                        <div className="text-[9px] text-slate-300">San Francisco, CA</div>
+                        <div className="text-[9px] font-mono text-cyan-400 font-bold uppercase">Cloud 5G Active</div>
+                        <div className="text-[8px] sm:text-[9px] text-slate-300">San Francisco, CA</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Grid of 12 Small Futuristic Neon Apps */}
-                  <div className="grid grid-cols-4 gap-y-4 gap-x-2 my-auto px-1 py-2">
+                  <div className="grid grid-cols-4 gap-y-3 sm:gap-y-4 gap-x-1.5 sm:gap-x-2 my-auto px-0.5 py-1">
                     {[
                       { id: 'calls', label: 'Calls', icon: Phone, color: 'bg-emerald-500/25 text-emerald-300 border-emerald-400/40' },
                       { id: 'messages', label: 'Messages', icon: MessageSquare, color: 'bg-blue-500/25 text-blue-300 border-blue-400/40' },
@@ -909,11 +947,11 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                           className="flex flex-col items-center gap-1 group focus-visible:outline-none cursor-pointer"
                         >
                           <div
-                            className={`w-12 h-12 rounded-2xl backdrop-blur-md border ${app.color} flex items-center justify-center shadow-lg group-hover:scale-110 active:scale-95 transition-transform`}
+                            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl backdrop-blur-md border ${app.color} flex items-center justify-center shadow-lg group-hover:scale-105 active:scale-95 transition-transform`}
                           >
-                            <Icon className="w-5 h-5 drop-shadow-[0_0_8px_currentColor]" />
+                            <Icon className="w-4 h-4 sm:w-5 sm:h-5 drop-shadow-[0_0_8px_currentColor]" />
                           </div>
-                          <span className="text-[10px] text-white/90 font-medium tracking-tight truncate max-w-[64px]">
+                          <span className="text-[9px] sm:text-[10px] text-white/90 font-medium tracking-tight truncate max-w-[56px] sm:max-w-[64px]">
                             {app.label}
                           </span>
                         </button>
@@ -922,46 +960,42 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                   </div>
 
                   {/* Fixed Bottom Dock */}
-                  <div className="p-2.5 rounded-2xl bg-black/55 backdrop-blur-2xl border border-white/20 flex items-center justify-around shadow-2xl">
+                  <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-black/55 backdrop-blur-2xl border border-white/20 flex items-center justify-around shadow-2xl">
                     <button
                       onClick={() => {
                         playButtonHaptic();
                         setActiveApp('calls');
-                        showToast('Launching Calls', 'Voice & Video Dialer');
                       }}
-                      className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 hover:scale-110 transition-transform cursor-pointer"
+                      className="p-2 sm:p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 hover:scale-105 transition-transform cursor-pointer"
                     >
-                      <Phone className="w-5 h-5" />
+                      <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                     <button
                       onClick={() => {
                         playButtonHaptic();
                         setActiveApp('messages');
-                        showToast('Launching Messages', 'RCS & Cloud Chat');
                       }}
-                      className="p-2.5 rounded-xl bg-blue-500/20 text-blue-400 hover:scale-110 transition-transform cursor-pointer"
+                      className="p-2 sm:p-2.5 rounded-xl bg-blue-500/20 text-blue-400 hover:scale-105 transition-transform cursor-pointer"
                     >
-                      <MessageSquare className="w-5 h-5" />
+                      <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                     <button
                       onClick={() => {
                         playButtonHaptic();
                         setActiveApp('messages');
-                        showToast('Assistant Connected', 'Voice & Text Active');
                       }}
-                      className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 hover:scale-110 transition-transform cursor-pointer"
+                      className="p-2 sm:p-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 hover:scale-105 transition-transform cursor-pointer"
                     >
-                      <Sparkles className="w-5 h-5" />
+                      <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                     <button
                       onClick={() => {
                         playButtonHaptic();
                         setActiveApp('browser');
-                        showToast('Launching Browser', 'Encrypted Gateway');
                       }}
-                      className="p-2.5 rounded-xl bg-sky-500/20 text-sky-300 hover:scale-110 transition-transform cursor-pointer"
+                      className="p-2 sm:p-2.5 rounded-xl bg-sky-500/20 text-sky-300 hover:scale-105 transition-transform cursor-pointer"
                     >
-                      <Globe className="w-5 h-5" />
+                      <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   </div>
                 </div>
@@ -974,9 +1008,9 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
                   setActiveApp(null);
                   setShowQuickSettings(false);
                 }}
-                className="w-full py-2 bg-black/70 backdrop-blur-sm flex justify-center cursor-pointer hover:bg-black/90 transition-colors"
+                className="w-full py-1.5 sm:py-2 bg-black/70 backdrop-blur-sm flex justify-center cursor-pointer hover:bg-black/90 transition-colors"
               >
-                <div className="w-28 h-1 bg-white/70 rounded-full" />
+                <div className="w-20 sm:w-28 h-1 bg-white/70 rounded-full" />
               </div>
             </div>
           </div>
@@ -987,14 +1021,14 @@ export const VirtualEPhone: React.FC<VirtualEPhoneProps> = ({
           <button
             onClick={handlePowerButton}
             title={isPoweredOn ? 'Turn Off / Lock Screen' : 'Power On Device'}
-            className="w-2.5 h-16 rounded-r-md bg-blue-600 hover:bg-cyan-400 active:bg-white shadow-[0_0_20px_#0047ff] transition-all cursor-pointer border-y border-r border-cyan-300/60 flex items-center justify-center"
+            className="w-1.5 sm:w-2.5 h-10 sm:h-16 rounded-r-md bg-blue-600 hover:bg-cyan-400 active:bg-white shadow-[0_0_15px_#0047ff] transition-all cursor-pointer border-y border-r border-cyan-300/60 flex items-center justify-center"
             aria-label="Power Button"
           />
         </div>
       </motion.div>
 
-      {/* Realistic Reflective Ground Plane below the phone (from T-V1.png) */}
-      <div className="w-72 sm:w-80 h-10 mt-[-15px] bg-gradient-to-t from-blue-600/20 via-white/5 to-transparent blur-md rounded-full pointer-events-none transform scale-y-50" />
+      {/* Ground Mirror Reflection */}
+      <div className="w-56 sm:w-80 h-8 sm:h-10 mt-[-10px] bg-gradient-to-t from-blue-600/20 via-white/5 to-transparent blur-md rounded-full pointer-events-none transform scale-y-50" />
     </div>
   );
 };

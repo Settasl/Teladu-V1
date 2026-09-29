@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { motion } from 'framer-motion';
 import { RotateCw, Maximize2, Sparkles, Layers } from 'lucide-react';
+import { safeRoundRect } from '../services/canvasUtils';
 
 interface ThreeGlassyPhoneProps {
   className?: string;
@@ -148,16 +149,18 @@ export const ThreeGlassyPhone: React.FC<ThreeGlassyPhoneProps> = ({
     const screenCanvas = document.createElement('canvas');
     screenCanvas.width = 1024;
     screenCanvas.height = 2048;
-    const ctx = screenCanvas.getContext('2d')!;
-
-    // Mountain Sunset Wallpaper matching T-V1.png
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, 1600);
-    skyGrad.addColorStop(0, '#0c1a30');
-    skyGrad.addColorStop(0.3, '#1e3a6a');
-    skyGrad.addColorStop(0.65, '#ea580c');
-    skyGrad.addColorStop(0.85, '#facc15');
-    skyGrad.addColorStop(1, '#090d16');
-    ctx.fillStyle = skyGrad;
+    const ctx = screenCanvas.getContext('2d');
+    if (ctx) {
+      // Mountain Sunset Wallpaper matching T-V1.png
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, 1600);
+      skyGrad.addColorStop(0, '#0c1a30');
+      skyGrad.addColorStop(0.3, '#1e3a6a');
+      skyGrad.addColorStop(0.65, '#ea580c');
+      skyGrad.addColorStop(0.85, '#facc15');
+      skyGrad.addColorStop(1, '#090d16');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, 1024, 2048);
+    }
     ctx.fillRect(0, 0, 1024, 2048);
 
     // Mountain silhouettes
@@ -221,32 +224,34 @@ export const ThreeGlassyPhone: React.FC<ThreeGlassyPhoneProps> = ({
     const backCanvas = document.createElement('canvas');
     backCanvas.width = 1024;
     backCanvas.height = 2048;
-    const bCtx = backCanvas.getContext('2d')!;
+    const bCtx = backCanvas.getContext('2d');
 
-    // Transparent frosted glass base
-    bCtx.fillStyle = 'rgba(10, 16, 28, 0.65)';
-    bCtx.fillRect(0, 0, 1024, 2048);
+    if (bCtx) {
+      // Transparent frosted glass base
+      bCtx.fillStyle = 'rgba(10, 16, 28, 0.65)';
+      bCtx.fillRect(0, 0, 1024, 2048);
 
-    // Center Glowing Blue Teladu Emblem
-    bCtx.fillStyle = '#0047ff';
-    bCtx.beginPath();
-    bCtx.roundRect(412, 920, 200, 200, 50);
-    bCtx.fill();
+      // Center Glowing Blue Teladu Emblem
+      bCtx.fillStyle = '#0047ff';
+      bCtx.beginPath();
+      safeRoundRect(bCtx, 412, 920, 200, 200, 50);
+      bCtx.fill();
 
-    // White smiling waving hand outline inside emblem
-    bCtx.fillStyle = '#ffffff';
-    bCtx.beginPath();
-    bCtx.arc(512, 1010, 48, 0, Math.PI * 2);
-    bCtx.fill();
+      // White smiling waving hand outline inside emblem
+      bCtx.fillStyle = '#ffffff';
+      bCtx.beginPath();
+      bCtx.arc(512, 1010, 48, 0, Math.PI * 2);
+      bCtx.fill();
 
-    // Bottom "V1 Cloud ePhone"
-    bCtx.textAlign = 'center';
-    bCtx.font = '700 44px "Plus Jakarta Sans", sans-serif';
-    bCtx.fillStyle = '#38bdf8';
-    bCtx.fillText('V1', 512, 1820);
-    bCtx.font = '500 34px "Plus Jakarta Sans", sans-serif';
-    bCtx.fillStyle = '#ffffff';
-    bCtx.fillText('Cloud ePhone', 512, 1870);
+      // Bottom "V1 Cloud ePhone"
+      bCtx.textAlign = 'center';
+      bCtx.font = '700 44px "Plus Jakarta Sans", sans-serif';
+      bCtx.fillStyle = '#38bdf8';
+      bCtx.fillText('V1', 512, 1820);
+      bCtx.font = '500 34px "Plus Jakarta Sans", sans-serif';
+      bCtx.fillStyle = '#ffffff';
+      bCtx.fillText('Cloud ePhone', 512, 1870);
+    }
 
     const backTexture = new THREE.CanvasTexture(backCanvas);
     const backMat = new THREE.MeshPhysicalMaterial({

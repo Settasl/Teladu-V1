@@ -121,7 +121,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
           <span className="text-[11px] text-slate-400">Questions? Reach out to teladuv1@gmail.com</span>
           <button
             onClick={onClose}
-            className="px-5 py-2 text-xs font-bold text-[#0038ff] bg-white hover:bg-slate-100 rounded-xl transition-all shadow-[0_0_15px_rgba(0,56,255,0.6)]"
+            className="px-4 py-1.5 text-xs font-bold text-white bg-white/10 hover:bg-white/20 active:bg-white/25 backdrop-blur-xl border border-white/25 hover:border-cyan-400/60 rounded-full transition-all shadow-[0_0_12px_rgba(0,71,255,0.35)] cursor-pointer"
           >
             I Understand
           </button>

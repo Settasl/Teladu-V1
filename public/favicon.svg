@@ -21,14 +21,10 @@
       <stop offset="60%" stopColor="#001477" stopOpacity="0.5" />
       <stop offset="100%" stopColor="#000c55" stopOpacity="0.75" />
     </linearGradient>
-
-    <filter id="iconShadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="16" stdDeviation="24" floodColor="#0038ff" floodOpacity="0.45" />
-    </filter>
   </defs>
 
   <!-- 1. Background Squircle with Exact Teladu Blue Palette -->
-  <rect x="24" y="24" width="464" height="464" rx="120" fill="url(#teladuBase)" filter="url(#iconShadow)" />
+  <rect x="24" y="24" width="464" height="464" rx="120" fill="url(#teladuBase)" />
 
   <!-- 2. Organic Deep Wave Layer in Lower Half -->
   <path

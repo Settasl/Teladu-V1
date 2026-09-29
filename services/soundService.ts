@@ -1,28 +1,33 @@
 /**
  * Web Audio API synthesized sound effects & navigator.vibrate haptic feedback
- * for the Teladu V1 Virtual ePhone
+ * Fully optimized for iOS Safari, Android, and Desktop browsers.
  */
 
 let audioCtx: AudioContext | null = null;
 
 const getAudioContext = (): AudioContext | null => {
   if (typeof window === 'undefined') return null;
-  if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (AudioContextClass) {
-      audioCtx = new AudioContextClass();
+  try {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
     }
-  }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {});
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+  } catch (e) {
+    console.warn('AudioContext init error:', e);
+    return null;
   }
   return audioCtx;
 };
 
-// Subtle hardware haptic vibration
+// Subtle hardware haptic vibration (guarded for iOS where vibrate does not exist)
 export const triggerHaptic = (pattern: number | number[] = 15) => {
   try {
-    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator && typeof navigator.vibrate === 'function') {
       navigator.vibrate(pattern);
     }
   } catch {}
@@ -39,7 +44,7 @@ export const playButtonHaptic = () => {
     osc.frequency.setValueAtTime(600, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.04);
 
-    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
 
     osc.connect(gain);
@@ -63,7 +68,7 @@ export const playBootChime = () => {
       osc.frequency.setValueAtTime(freq, now + idx * 0.08);
 
       gain.gain.setValueAtTime(0, now + idx * 0.08);
-      gain.gain.linearRampToValueAtTime(0.15, now + idx * 0.08 + 0.05);
+      gain.gain.linearRampToValueAtTime(0.12, now + idx * 0.08 + 0.05);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 1.2);
 
       osc.connect(gain);
@@ -80,7 +85,7 @@ export const playShutterSound = () => {
     const ctx = getAudioContext();
     if (!ctx) return;
     const now = ctx.currentTime;
-    const bufferSize = ctx.sampleRate * 0.05;
+    const bufferSize = Math.floor(ctx.sampleRate * 0.05);
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
@@ -94,7 +99,7 @@ export const playShutterSound = () => {
     filter.frequency.setValueAtTime(1200, now);
 
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.setValueAtTime(0.25, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
 
     noise.connect(filter);
@@ -122,7 +127,7 @@ export const playDtmfTone = (key: string) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.frequency.setValueAtTime(freq, now);
-      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.setValueAtTime(0.06, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
       osc.connect(gain);
       gain.connect(ctx.destination);

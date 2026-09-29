@@ -60,15 +60,17 @@ export const PillarsSection: React.FC<{ onOpenPreOrder?: () => void }> = ({ onOp
         </div>
 
         {/* The 5 Macro Tiles (Exact Reproduction of T-V1.png Bottom Strip) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
           {TILES.map((tile, idx) => (
             <motion.div
               key={tile.title}
               whileHover={{ y: -6, transition: { duration: 0.2 } }}
-              className="group relative rounded-2xl bg-slate-950/80 backdrop-blur-xl border border-blue-500/25 hover:border-cyan-400/60 overflow-hidden shadow-lg hover:shadow-[0_0_25px_rgba(0,71,255,0.3)] flex flex-col justify-between transition-all"
+              className={`group relative rounded-2xl bg-slate-950/80 backdrop-blur-xl border border-blue-500/25 hover:border-cyan-400/60 overflow-hidden shadow-lg hover:shadow-[0_0_25px_rgba(0,71,255,0.3)] flex flex-col justify-between transition-all ${
+                idx === 4 ? 'col-span-2 sm:col-span-1 lg:col-span-1' : ''
+              }`}
             >
               {/* Visual Macro Artwork Canvas matching the photo in T-V1.png */}
-              <div className="relative w-full aspect-[4/3] bg-gradient-to-b from-[#0c1424] to-[#04060d] overflow-hidden flex items-center justify-center p-3">
+              <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] bg-gradient-to-b from-[#0c1424] to-[#04060d] overflow-hidden flex items-center justify-center p-2.5 sm:p-3">
                 {/* 1. Camera Macro Render */}
                 {tile.renderType === 'camera' && (
                   <div className="relative w-28 h-28 rounded-full bg-slate-900 border-2 border-slate-700/80 shadow-2xl flex items-center justify-center">
