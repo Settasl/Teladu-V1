@@ -1,0 +1,8 @@
+{
+  "name": "Remix InfoGenius",
+  "description": "Teladu V1 Cloud ePhone — The first cloud ePhone with virtual eSIM, 3D glassy architecture, and browser-native execution.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

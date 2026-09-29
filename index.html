@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <title>Teladu V1 Cloud ePhone — The First Cloud ePhone</title>
+    <meta name="description" content="Meet the Teladu V1 Cloud ePhone. No physical device, access anywhere from any computer, and instant virtual eSIM activation. Early Bird Pre-Order $29." />
+    <meta property="og:title" content="Teladu V1 Cloud ePhone — The First Cloud ePhone" />
+    <meta property="og:description" content="Meet the Teladu V1 Cloud ePhone. No physical device, access anywhere from any computer, and instant virtual eSIM activation. Early Bird Pre-Order $29." />
+    
+    <!-- Mobile & Browser Optimization (iOS & Android) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#03060f" />
+    <link rel="icon" type="image/svg+xml" href="/teladu-icon.svg" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ['Syne', 'sans-serif'],
+              sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'monospace'],
+            },
+            colors: {
+              teladu: {
+                50: '#f0f9ff',
+                100: '#e0f2fe',
+                200: '#bae6fd',
+                300: '#7dd3fc',
+                400: '#38bdf8',
+                500: '#0ea5e9',
+                600: '#0038ff',
+                700: '#002ec8',
+                800: '#075985',
+                900: '#0c4a6e',
+                950: '#082f49',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #03060f;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+        .font-display {
+            font-family: 'Syne', sans-serif;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom sleek scrollbar */
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+          background: #060912; 
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #1e293b; 
+          border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #0038ff; 
+        }
+    </style>
+    <link rel="stylesheet" href="/index.css">
+  </head>
+  <body class="bg-[#03060f] text-slate-100 antialiased selection:bg-blue-600/40 selection:text-cyan-200">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
